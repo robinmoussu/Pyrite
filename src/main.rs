@@ -63,9 +63,9 @@ enum BinaryOperator {
 
 #[derive(Debug, std::cmp::PartialEq)]
 struct BinaryExpression {
-    left: Value,
+    left: Expression,
     op: BinaryOperator,
-    right: Value,
+    right: Expression,
 }
 
 #[derive(Debug, std::cmp::PartialEq)]
@@ -122,9 +122,9 @@ impl Grammar for BinaryOperator {
 
 impl Grammar for BinaryExpression {
     fn parse<'a>(txt: &'a str) -> Result<(Self, &'a str), ParseError> {
-        let (left, txt) = Value::parse(txt)?;
+        let (left, txt) = Expression::parse(txt)?;
         let (op, txt) = BinaryOperator::parse(txt)?;
-        let (right, txt) = Value::parse(txt)?;
+        let (right, txt) = Expression::parse(txt)?;
         Ok((BinaryExpression { left, op, right }, txt))
     }
 }
@@ -260,6 +260,26 @@ mod tests {
                 right: 4,
             },
         );
+        match_all(
+            "3÷(4)",
+            BinaryExpression {
+                left: 3,
+                op: BinaryOperator::Div(Div),
+                right: Expression::Value(Box::new(4)),
+            },
+        );
+        match_all(
+            "3÷(4-2)",
+            BinaryExpression {
+                left: 3,
+                op: BinaryOperator::Div(Div),
+                right: Expression::Parenthesis(Box::new(BinaryExpression {
+                    left: 3,
+                    op: BinaryOperator::Sub(Div),
+                    right: 2,
+                })),
+            },
+        );
         match_partial(
             "3÷4abc",
             BinaryExpression {
@@ -315,6 +335,16 @@ mod tests {
         );
         match_all(
             "((3+2))",
+            Parenthesis(Expression::Parenthesis(Box::new(Parenthesis(
+                Expression::BinaryExpression(BinaryExpression {
+                    left: 3,
+                    op: BinaryOperator::Add(Add),
+                    right: 2,
+                }),
+            )))),
+        );
+        match_all(
+            "((3+(2)))",
             Parenthesis(Expression::Parenthesis(Box::new(Parenthesis(
                 Expression::BinaryExpression(BinaryExpression {
                     left: 3,
